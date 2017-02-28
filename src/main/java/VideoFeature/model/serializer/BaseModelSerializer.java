@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import VideoFeature.model.BaseModel;
+import VideoFeature.model.Frame;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
@@ -18,7 +19,6 @@ import com.esotericsoftware.kryo.io.Output;
 /**
  * 帧序列化器抽象类，实现了抽象帧{@link BaseModel} 基本属性的序列化，其他帧序列化器继承并实现其他抽象接口
  *  
- * @author liangzhaohao
  *
  * @param <Type> extends GenericType and indicates the objects this serializer will be able to (de)serialize
  */
@@ -48,6 +48,7 @@ public abstract class BaseModelSerializer<Type extends BaseModel> extends Serial
 	 */
 	public Values toTuple(BaseModel object) throws IOException{
 		Values values = new Values(object.getClass().getName(), object.getStreamId(), object.getSeqNumber(), object.getMetadata());
+//		Frame frame = (Frame)object;
 		values.addAll(getValues(object));
 		return values;
 	}
@@ -79,6 +80,8 @@ public abstract class BaseModelSerializer<Type extends BaseModel> extends Serial
 			return result;
 		} catch (Exception e) {
 			//TODO
+			System.out.println("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+			e.printStackTrace();
 		}
 		return null;
 	}
@@ -92,6 +95,8 @@ public abstract class BaseModelSerializer<Type extends BaseModel> extends Serial
 			this.writeObject(kryo, output, type);
 		} catch (Exception e) {
 			//TODO
+			System.out.println("ssssssssssssssssssssssssssssssssssssssssss");
+			e.printStackTrace();
 		}
 		output.flush();
 		//output.close();

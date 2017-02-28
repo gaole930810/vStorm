@@ -28,7 +28,6 @@ import backtype.storm.utils.Utils;
 /**
  * 数据库存储接口，输入为单帧特征 {@link ISingleOperation}
  * 
- * @author liangzhaohao
  */
 
 public class MysqlOp implements ISingleOperation<Feature>{

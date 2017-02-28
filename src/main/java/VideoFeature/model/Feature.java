@@ -1,5 +1,6 @@
 package VideoFeature.model;
 
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,7 +19,6 @@ import backtype.storm.tuple.Tuple;
  * It is not always clear how a specific descriptor should be stored and it is typically up to the characteristics of the 
  * topology and context what is the best way to go.  
  *  
- * @author Corne Versloot
  *
  */
 public class Feature extends BaseModel{
@@ -27,11 +27,14 @@ public class Feature extends BaseModel{
 	private long duration;
 	private List<Descriptor> sparseDescriptors = new ArrayList<Descriptor>();
 	private float[][][] denseDescriptors = new float[0][0][0];
+//	private Rectangle bounding;	//对应的帧大小
+	private int overlapPixel = 0;//如帧是部分数据块，指明重叠区域大小
 	
-	public Feature(String streamId, long seqNumber, String name, long duration, List<Descriptor> sparseDescriptors, float[][][] denseDescriptors) {
+	public Feature(String streamId, long seqNumber, String name, long duration, List<Descriptor> sparseDescriptors, float[][][] denseDescriptors/*,Rectangle bounding*/) {
 		super(streamId, seqNumber);
 		this.name = name;
 		this.duration = duration;
+//		this.bounding = bounding;
 		if(sparseDescriptors != null){
 			this.sparseDescriptors = sparseDescriptors;
 		}
@@ -40,10 +43,11 @@ public class Feature extends BaseModel{
 		}
 	}
 	
-	public Feature(Tuple tuple, String name, long duration, List<Descriptor> sparseDescriptors, float[][][] denseDescriptors) {
+	public Feature(Tuple tuple, String name, long duration, List<Descriptor> sparseDescriptors, float[][][] denseDescriptors/*,Rectangle bounding*/) {
 		super(tuple);
 		this.name = name;
 		this.duration = duration;
+//		this.bounding = bounding;
 		if(sparseDescriptors != null){
 			this.sparseDescriptors = sparseDescriptors;
 		}
@@ -68,6 +72,14 @@ public class Feature extends BaseModel{
 		return this.duration;
 	}
 	
+//	public Rectangle getBounding() {
+//		return bounding;
+//	}
+
+//	public void setBounding(Rectangle bounding) {
+//		this.bounding = bounding;
+//	}
+	
 	public Feature deepCopy(){
 		float[][][] denseCopy = new float[denseDescriptors.length][][];
 		for(int x=0; x<denseDescriptors.length; x++){
@@ -83,11 +95,20 @@ public class Feature extends BaseModel{
 		}
 		
 		Feature copyFeature = new Feature(new String(this.getStreamId()), this.getSeqNumber(), new String(this.getName()), this.getDuration(), 
-				sparseCopy, denseCopy);
+				sparseCopy, denseCopy/*,this.getBounding()*/).OverlapPixel(overlapPixel);
 		copyFeature.setMetadata(this.getMetadata());
 		return copyFeature;
 	}
 	
+	public int getOverlapPixel() {
+		return overlapPixel;
+	}
+
+	public Feature OverlapPixel(int overlapPixel) {
+		this.overlapPixel = overlapPixel;
+		return this;
+	}
+
 	public String toString(){
 		return "Feature {stream:"+getStreamId()+", nr:"+getSeqNumber()+", name: "+name+", descriptors: "+sparseDescriptors+"}";
 	}

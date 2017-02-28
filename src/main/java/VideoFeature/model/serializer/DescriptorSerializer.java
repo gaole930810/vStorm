@@ -16,7 +16,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 /**
  * 特征描述符序列化器，继承抽象帧序列化器 {@link BaseModelSerializer}
- * @author liangzhaohao
  */
 public class DescriptorSerializer extends BaseModelSerializer<Descriptor> implements Serializable {
 
@@ -59,6 +58,7 @@ public class DescriptorSerializer extends BaseModelSerializer<Descriptor> implem
 		for(Float f : descriptor.getValues()){
 			output.writeFloat(f);
 		}
+		
 	}
 
 	@Override

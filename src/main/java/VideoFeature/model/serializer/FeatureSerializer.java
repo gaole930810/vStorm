@@ -1,5 +1,6 @@
 package VideoFeature.model.serializer;
 
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -16,8 +17,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 /**
  * 
- * 特征序列化器，继承抽象真序列化器 {@link BaseModelSerializer}
- *@author liangzhaohao 
+ * 特征序列化器，继承抽象帧序列化器 {@link BaseModelSerializer}
  */
 
 public class FeatureSerializer extends BaseModelSerializer<Feature> implements Serializable {
@@ -27,20 +27,22 @@ public class FeatureSerializer extends BaseModelSerializer<Feature> implements S
 	public static final String DURATION = "duration";
 	public static final String SPARSE_DESCR = "sparse";
 	public static final String DENSE_DESCR = "dense";
-
+//	public final static String BOUNDING_F = "BOUNDING_F_FEATURE";
+	public final static String OVERLAP_PIXEL_F = "OVERLAP_PIXEL_F_FEATURE";
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Feature createObject(Tuple tuple) throws IOException {
 		List<Descriptor> sparseDescriptors = (List<Descriptor>) tuple.getValueByField(SPARSE_DESCR);
 		float[][][] denseDescriptors = (float[][][])tuple.getValueByField(DENSE_DESCR);
-		Feature feature = new Feature(tuple, tuple.getStringByField(NAME), tuple.getLongByField(DURATION), sparseDescriptors, denseDescriptors);
+		Feature feature = new Feature(tuple, tuple.getStringByField(NAME), tuple.getLongByField(DURATION), sparseDescriptors, denseDescriptors/*,(Rectangle)tuple.getValueByField(BOUNDING_F)*/).OverlapPixel(tuple.getIntegerByField(OVERLAP_PIXEL_F));
 		return feature;
 	}
 
 	@Override
 	protected Values getValues(BaseModel basemodel) throws IOException {
 		Feature feature = (Feature)basemodel;
-		return new Values(feature.getName(), feature.getDuration(), feature.getSparseDescriptors(), feature.getDenseDescriptors());
+		return new Values(feature.getName(), feature.getDuration(), feature.getSparseDescriptors(), feature.getDenseDescriptors()/*, feature.getBounding()*/, feature.getOverlapPixel());
 	}
 
 	@Override
@@ -50,6 +52,8 @@ public class FeatureSerializer extends BaseModelSerializer<Feature> implements S
 		fields.add(DURATION);
 		fields.add(SPARSE_DESCR);
 		fields.add(DENSE_DESCR);
+//		fields.add(BOUNDING_F);
+		fields.add(OVERLAP_PIXEL_F);
 		return fields;
 	}
 	
@@ -71,6 +75,15 @@ public class FeatureSerializer extends BaseModelSerializer<Feature> implements S
 				}
 			}
 		}
+//		if(feature.getBounding() != null){
+//			output.writeFloat((float)feature.getBounding().getX());
+//			output.writeFloat((float)feature.getBounding().getY());
+//			output.writeFloat((float)feature.getBounding().getWidth());
+//			output.writeFloat((float)feature.getBounding().getHeight());
+//		}
+//		output.writeInt(feature.getOverlapPixel());
+		
+		
 	}
 
 	@SuppressWarnings("unchecked")
@@ -80,22 +93,29 @@ public class FeatureSerializer extends BaseModelSerializer<Feature> implements S
 		long duration = input.readLong();
 		List<Descriptor> sparseDescriptors = kryo.readObject(input, ArrayList.class);
 		
-			int xl = input.readInt();
-			float[][][] denseDescriptor = null;
-			if(xl > 0){
-				int yl = input.readInt();
-				int zl = input.readInt();
-				denseDescriptor = new float[xl][yl][zl];
-				for(int x=0; x<xl; x++){
-					for(int y=0; y<yl; y++){
-						for(int z=0; z<zl; z++){
-							denseDescriptor[x][y][z] = input.readFloat();
-						}
+		int xl = input.readInt();
+		float[][][] denseDescriptor = null;
+		if(xl > 0){
+			int yl = input.readInt();
+			int zl = input.readInt();
+			denseDescriptor = new float[xl][yl][zl];
+			for(int x=0; x<xl; x++){
+				for(int y=0; y<yl; y++){
+					for(int z=0; z<zl; z++){
+						denseDescriptor[x][y][z] = input.readFloat();
 					}
 				}
 			}
-		
-		Feature feature = new Feature(streamId, sequenceNr, name, duration, sparseDescriptors, denseDescriptor);
+		}
+//		int x1 = Math.round(input.readFloat());
+//		int y1 = Math.round(input.readFloat());
+//		int x2 = Math.round(input.readFloat());
+//		int y2 = Math.round(input.readFloat());
+//		
+//		Rectangle boundingBox = new Rectangle(x1,y1,x2,y2);
+//		int overlapPixel = input.readInt();
+		int overlapPixel =0;
+		Feature feature = new Feature(streamId, sequenceNr, name, duration, sparseDescriptors, denseDescriptor/*,boundingBox*/).OverlapPixel(overlapPixel);
 		return feature;
 	}
 

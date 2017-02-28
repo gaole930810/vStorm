@@ -7,9 +7,7 @@ import java.net.URL;
 
 import VideoFeature.utils.NativeUtils;
 
-/**
- * Created by liangzhaohao on 15/4/29.
- */
+
 public class test {
 
     public static void main(String[] args) {

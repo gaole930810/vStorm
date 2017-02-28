@@ -9,12 +9,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import VideoFeature.model.BaseModel;
+import VideoFeature.model.Frame;
 import VideoFeature.model.serializer.BaseModelSerializer;
 import backtype.storm.Config;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
+import backtype.storm.tuple.Values;
 import clojure.lang.PersistentArrayMap;
 
 /**
@@ -51,11 +53,14 @@ public abstract class BaseOpBolt extends BaseRichBolt{
 		
 		try {
 			this.prepare(conf, context);
+			idleTimestamp = System.currentTimeMillis();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 	}
+	
 	
 	@SuppressWarnings({ "rawtypes" })
 	@Override
@@ -66,8 +71,10 @@ public abstract class BaseOpBolt extends BaseRichBolt{
 			if(results !=null){
 				for(BaseModel output : results){
 					BaseModelSerializer serializer = serializers.get(output.getClass().getName());
+					Frame frame = (Frame)output;
 					if(serializers.containsKey(output.getClass().getName())){
-						collector.emit(input, serializer.toTuple(output));
+						Values value = serializer.toTuple(output);						
+						collector.emit(input, value);
 //						System.out.println(output.toString());
 					}else{
 						// TODO: what else?
@@ -80,7 +87,7 @@ public abstract class BaseOpBolt extends BaseRichBolt{
 			logger.warn("Unable to process input", e);
 			collector.fail(input);
 		}
-		idleTimestamp = System.currentTimeMillis();
+		
 	}
 	
 	/**
@@ -90,10 +97,17 @@ public abstract class BaseOpBolt extends BaseRichBolt{
 	 * @throws IOException 
 	 */
 	protected BaseModel deserialize(Tuple tuple) throws IOException{
+
 		String typeName = tuple.getStringByField(BaseModelSerializer.TYPE);
 		return serializers.get(typeName).fromTuple(tuple);
 	}
 	
+	/**
+	 * @return 组件当前运行时间（ms）
+	 */
+	public long getProcessTime(){
+		return System.currentTimeMillis() - idleTimestamp;
+	}
 	/**
 	 * Subclasses must implement this method which is responsible for analysis of 
 	 * received CVParticle objects. A single input object may result in zero or more

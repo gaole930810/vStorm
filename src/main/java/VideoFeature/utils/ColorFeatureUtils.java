@@ -14,9 +14,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.*;
 import static org.bytedeco.javacpp.opencv_highgui.*; 
 
 import org.bytedeco.javacpp.opencv_core.CvMat;
-/**
- * Created by liangzhaohao on 15/3/24.
- */
+
 	public class ColorFeatureUtils {
 	
 	public static double h_mean=0;

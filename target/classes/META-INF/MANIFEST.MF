@@ -1,3 +1,12 @@
 Manifest-Version: 1.0
-Main-Class: facedect.FacedetectTopology
+Implementation-Vendor: The Apache Software Foundation
+Implementation-Title: vStorm
+Implementation-Version: 0.9.3
+Implementation-Vendor-Id: org.apache.storm
+Specification-Vendor: The Apache Software Foundation
+Build-Jdk: 1.7.0_80
+Built-By: le
+Created-By: Maven Integration for Eclipse
+Specification-Title: vStorm
+Specification-Version: 0.9.3
 

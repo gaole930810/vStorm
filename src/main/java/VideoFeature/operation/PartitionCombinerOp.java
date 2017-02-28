@@ -4,6 +4,7 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -21,14 +22,8 @@ import backtype.storm.task.TopologyContext;
 
 
 /**
- * The TilesRecombinerOperation combines a set of tiles ({@link Frame} objects) originating from the same frame.
- * Tiling can be used to lower the load on image processing steps by decreasing the number of pixels to be analyzed 
- * at once. Tiles are Frames which can have {@link Feature}'s and {@link Descriptor}'s. This operation attempts to recombine
- * the tiles back into the original frame with the right features as if the tiling never took place. Hence Features are
- * merged as well and the 'local' locations of descriptors is translated to the 'global' location within the original
- * frame.  
+ * 把分块的特征合并
  * 
- * @author Corne Versloot
  *
  */
 public class PartitionCombinerOp implements IBatchOperation<BaseModel>{
@@ -75,41 +70,72 @@ public class PartitionCombinerOp implements IBatchOperation<BaseModel>{
 	@Override
 	public List<BaseModel> execute(List<BaseModel> input) throws Exception {
 		Map<String, Feature> featureNameMap = new HashMap<String, Feature>();
-		
 		int width = 0, height = 0;
+		int tileWidth=0,tileHeight=0;
 		for(BaseModel basemodel : input){
-			if(basemodel instanceof Frame){
-				Frame frame = (Frame)basemodel;
-				width = (int)Math.max(width, frame.getBounding().getMaxX());
-				height = (int)Math.max(height, frame.getBounding().getMaxY());
+			Rectangle box = null ;
+			int overPixel = 0;
+			if(basemodel instanceof Feature){
+			  Feature ft  = (Feature)basemodel;
+//				   box    = ft.getBounding();
+				overPixel = ft.getOverlapPixel();
+			}else if(basemodel instanceof Frame){
+				Frame ft  = (Frame)basemodel;
+				   box    = ft.getBounding();
+				overPixel = ft.getOverlapPixel();
+			}
+			if(box!=null){
+				width = (int)Math.max(width, box.getMaxX());	//取得完整帧的最大X坐标，即width
+				height = (int)Math.max(height, box.getMaxY());	//取得完整帧的最大Y坐标，即height
+				if(tileWidth == 0 && box.getMinX() == 0){
+					tileWidth = (int) (box.getWidth() - overPixel);//取得分块数据宽度
+				}
+				if(tileHeight == 0 && box.getMinY() == 0){
+					tileHeight = (int) (box.getHeight() - overPixel);//取得分块数据高度
+				}
 			}
 		}
 		
+		System.out.println("Combiner sequence number:"+input.get(0).getSeqNumber()+" "+input.size()+"width:"+width+",height:"+height);
 		Rectangle totalFrame = new Rectangle(0, 0, width, height);
 		BufferedImage newImage = null;
+		
 		if(outputFrame){
 			newImage = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
 		}
 		for(BaseModel basemodel : input){
+			List<Rectangle> boxes = new ArrayList<Rectangle>();
+			List<Feature> features = new ArrayList<Feature>();
 			if(basemodel instanceof Frame){
-				Frame frame = (Frame)basemodel;
-				Rectangle box = frame.getBounding();
-				for(Feature feature : frame.getFeatures()){
-					merge(feature, featureNameMap, box, totalFrame);
-				}
+				Frame f = (Frame) basemodel;
+//				features = f.getFeatures();
+				features.add( f.getFeature()) ;
+				boxes.add(f.getBounding());
 				if(outputFrame){
-					newImage.getGraphics().drawImage(frame.getImage(), box.x, box.y, null);
+					newImage.getGraphics().drawImage(f.getImageBuf(), f.getBounding().x, f.getBounding().y, null);
 				}
 			}else{
-				logger.warn("Can only operate on Frame but got "+particle.getClass().getName()+" else so input is dropped.");
+				logger.warn("Can only operate on Frame but got "+input.getClass().getName()+" else so input is dropped.");
+				if(basemodel instanceof Feature){
+					features.add((Feature)basemodel);
+					
+				}
 			}
+			int i =0;
+			for(Feature feature : features){
+//				Rectangle box = feature.getBounding();
+				
+				merge(feature, featureNameMap, boxes.get(i++), totalFrame, tileWidth, tileHeight);//合并分块特征
+			}
+			
 		}
 		
 		List<BaseModel> result = new ArrayList<BaseModel>();
 		if(outputFrame){
-			Frame newFrame = new Frame(input.get(0).getStreamId(), input.get(0).getSeqNumber()(), 
-					imageType, newImage, ((Frame)input.get(0)).getTimeStamp(), totalFrame);
-			newFrame.getFeatures().addAll(featureNameMap.values());
+			Frame newFrame = new Frame(input.get(0).getStreamId(), input.get(0).getSeqNumber(), 
+					newImage,imageType, ((Frame)input.get(0)).getTimeStamp(), totalFrame);
+//			newFrame.getFeatures().addAll(featureNameMap.values());
+			newFrame.setFeature(featureNameMap.get(0));
 			result.add(newFrame);
 		}else{
 			result.addAll(featureNameMap.values());
@@ -118,23 +144,38 @@ public class PartitionCombinerOp implements IBatchOperation<BaseModel>{
 	}
 	
 	/**
-	 * Merges the new feature into the set with existing features
-	 * @param newF
-	 * @param features
-	 * @param tile
+	 * 合并分块数据的特征
+	 * @param newF 分块的特征
+	 * @param features 合并的特征
+	 * @param tile  分块的大小
+	 * @param frame 原图像的大小
 	 */
-	private void merge(Feature newF, Map<String, Feature> features, Rectangle tile, Rectangle frame){
-		// first translate descriptors to new location given the boundingBox
-		for(Descriptor descriptor : newF.getSparseDescriptors()){
-			descriptor.translate(tile.x, tile.y);
+	private void merge(Feature newF, Map<String, Feature> features, Rectangle tile, Rectangle frame, int tileWidth, int tileHeight){
+		String streamId = newF.getStreamId();
+		int tileIndex = Integer.parseInt(streamId.substring(streamId.lastIndexOf("_")+1,streamId.length()));
+		int rTiles = (int) (frame.getWidth()/tileWidth + frame.getWidth()%tileWidth);
+		int cTiles = (int) (frame.getHeight()/tileHeight + frame.getHeight()%tileHeight);
+		List<Descriptor> descriptorList = newF.getSparseDescriptors();
+		Iterator<Descriptor> it = descriptorList.iterator();
+		// 将每个特征向量转换为原图像中的坐标,并移除分块数据中重叠区域的特征点
+		while(it.hasNext()){
+			Descriptor descriptor = it.next();
+			descriptor.translate(tile.x, tile.y); //特征转换为原坐标
+			int x = (int)descriptor.getBounding().getX() ;
+			int y = (int)descriptor.getBounding().getX() ;
+			//排除重叠区域
+			if(x < (tileIndex % rTiles) * tileWidth || x > (tileIndex % rTiles +1) * tileWidth ){
+				it.remove();
+			}
+			else if(y < (tileIndex % cTiles) * tileHeight || y > (tileIndex % cTiles +1) * tileHeight ){
+				it.remove();
+			}
 		}
 		
-		// add newF to the set with features (possibly merging it with existing one which has the same name)
+		// 合并第一块数据时features中没有对应数据
 		Feature feature = features.get(newF.getName());
-		if(feature == null){
-			String streamId = newF.getStreamId();
+		if(feature == null){//第一块数据
 			streamId = streamId.substring(0, streamId.lastIndexOf('_'));
-
 			// add dense descriptor if present
 			float[][][] dense;
 			if(newF.getDenseDescriptors() != null && newF.getDenseDescriptors().length > 0){
@@ -148,14 +189,15 @@ public class PartitionCombinerOp implements IBatchOperation<BaseModel>{
 			}else{
 				dense = null;
 			}
-			Feature combiFeature = new Feature(streamId, newF.getSequenceNr(), newF.getName(), newF.getDuration(), newF.getSparseDescriptors(), dense);
+			Feature combiFeature = new Feature(streamId, newF.getSeqNumber(), newF.getName(), newF.getDuration(), newF.getSparseDescriptors(), dense/*,newF.getBounding()*/);
 			features.put(newF.getName(), combiFeature);
 		}else{
-			feature.getSparseDescriptors().addAll(newF.getSparseDescriptors());
+			feature.getSparseDescriptors().addAll(newF.getSparseDescriptors());	//顺序如何保证?
 			Map<String, Object> metadata = feature.getMetadata();
-			for(String key : newF.getMetadata().keySet()) if (!metadata.containsKey(key)){
-				metadata.put(key, newF.getMetadata().get(key));
-			}
+			for(String key : newF.getMetadata().keySet())
+				if (!metadata.containsKey(key)){
+					metadata.put(key, newF.getMetadata().get(key));
+				}
 			
 			// add dense descriptors (if present)
 			if(feature.getDenseDescriptors() != null && newF.getDenseDescriptors() != null){

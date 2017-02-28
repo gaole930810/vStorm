@@ -10,9 +10,7 @@ import java.net.URL;
 
 import backtype.storm.utils.Utils;
 
-/**
- * Created by liangzhaohao on 15/4/17.
- */
+
 public class NativeUtils {
 
 	

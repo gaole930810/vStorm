@@ -11,7 +11,8 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 
 /**
- * Created by liangzhaohao on 15/4/15.
+ * 单个帧输入处理节点
+ * 
  */
 public class SingleOpBolt extends BaseOpBolt {
 

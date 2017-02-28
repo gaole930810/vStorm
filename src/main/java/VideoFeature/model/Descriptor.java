@@ -17,9 +17,9 @@ import backtype.storm.tuple.Tuple;
  */
 public class Descriptor extends BaseModel {
 
-	private Rectangle bounding;
+	private Rectangle bounding;	//特征描述符坐标x,y
 	private long duration;
-	private float[] values;
+	private float[] values;	//128维特征向量
 	
 	public Descriptor(String streamId, long seqNumber, Rectangle bounding, long duration, float[] values) {
 		super(streamId, seqNumber);
@@ -51,6 +51,11 @@ public class Descriptor extends BaseModel {
 		return values;
 	}
 	
+	/**
+	 * 坐标调整，对于分块数据，其坐标要调整到原图像的坐标系中
+	 * @param x 数据分块在原图像的x坐标
+	 * @param y 数据分块在原图像的y坐标 
+	 */
 	public void translate(int x, int y){
 		this.bounding.x += x;
 		this.bounding.y += y;

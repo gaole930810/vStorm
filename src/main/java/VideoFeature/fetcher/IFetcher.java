@@ -8,9 +8,7 @@ import VideoFeature.model.BaseModel;
 import VideoFeature.model.serializer.BaseModelSerializer;
 import backtype.storm.task.TopologyContext;
 
-/**
- * Created by liangzhaohao on 15/4/16.
- */
+
 public interface IFetcher<Output extends BaseModel> extends Serializable  {
 
 	@SuppressWarnings("rawtypes")

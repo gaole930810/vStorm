@@ -9,9 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-/**
- * Created by liangzhaohao on 15/3/24.
- */
 public class ImageUtils {
 
     /**

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import VideoFeature.model.BaseModel;
+import VideoFeature.model.Feature;
 import VideoFeature.model.Frame;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
@@ -19,7 +20,6 @@ import com.esotericsoftware.kryo.io.Output;
 
 /**
  * 单帧序列化器，继承抽象帧序列化器{@link BaseModelSerializer} 
- * @author liangzhaohao on 15/4/15.
  */
 public class FrameSerializer extends BaseModelSerializer<Frame> implements Serializable{
 
@@ -28,8 +28,10 @@ public class FrameSerializer extends BaseModelSerializer<Frame> implements Seria
     public final static String IMAGE_BYTES = "IMAGE_BYTES";
 	public static final String TIME_STAMP = "TIME_STAMP";
     public final static String BOUNDING = "BOUNDING";
-
-
+    public final static String OVERLAP_PIXEL = "OVERLAP_PIXEL";
+    public final static String FLAG = "FLAG";
+    public static final String FEATURE = "FEATURE";
+    
 //    /**
 //     * streamId
 //     * seqNumber
@@ -111,14 +113,16 @@ public class FrameSerializer extends BaseModelSerializer<Frame> implements Seria
 		output.writeFloat((float)frame.getBounding().getY());
 		output.writeFloat((float)frame.getBounding().getWidth());
 		output.writeFloat((float)frame.getBounding().getHeight());
-		
-//		kryo.writeObject(output, frame.getFeatures());
-	
+		output.writeInt(frame.getOverlapPixel());
+		output.writeShort(frame.getFlag());
+		kryo.writeObject(output, frame.getFeature());
+
 		
 	}
 	/*
 	 * deserialized
 	 */
+	@SuppressWarnings("unchecked")
 	@Override
 	protected Frame readObject(Kryo kryo, Input input, Class<Frame> clas,
 			String streamId, long sequenceNr) throws Exception {
@@ -134,12 +138,16 @@ public class FrameSerializer extends BaseModelSerializer<Frame> implements Seria
 		}
 		Rectangle boundingBox = new Rectangle(Math.round(input.readFloat()), Math.round(input.readFloat()), 
 				Math.round(input.readFloat()), Math.round(input.readFloat()));
-//		List<Feature> features = kryo.readObject(input, ArrayList.class);
 		
-		return new Frame(streamId, sequenceNr, imageType, buffer, timeStamp, boundingBox);
+		int overlapPixel = input.readInt();
+		short flag = input.readShort();
+//		List<Feature> features = kryo.readObject(input, ArrayList.class);
+		Feature feature = kryo.readObject(input, Feature.class);
+		return new Frame(streamId, sequenceNr, imageType, buffer, timeStamp, boundingBox ,feature).OverlapPixel(overlapPixel).Flag(flag);
 	
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected Frame createObject(Tuple tuple) throws IOException {
 		// TODO Auto-generated method stub
@@ -147,11 +155,22 @@ public class FrameSerializer extends BaseModelSerializer<Frame> implements Seria
 		byte[] buffer = tuple.getBinaryByField(IMAGE_BYTES);
 		Frame frame;
 		if(buffer == null){
-			frame = new Frame(tuple, tuple.getStringByField(IMAGE_TYPE), null, tuple.getLongByField(TIME_STAMP), (Rectangle)tuple.getValueByField(BOUNDING));
+			frame = new Frame(tuple, tuple.getStringByField(IMAGE_TYPE), null, tuple.getLongByField(TIME_STAMP), (Rectangle)tuple.getValueByField(BOUNDING))
+							.OverlapPixel(tuple.getIntegerByField(OVERLAP_PIXEL))
+							.Flag(tuple.getShortByField(FLAG));
 		}else{
-			frame = new Frame(tuple, tuple.getStringByField(IMAGE_TYPE), buffer, tuple.getLongByField(TIME_STAMP), (Rectangle)tuple.getValueByField(BOUNDING));
+			frame = new Frame(tuple, tuple.getStringByField(IMAGE_TYPE), buffer, tuple.getLongByField(TIME_STAMP), (Rectangle)tuple.getValueByField(BOUNDING))
+							.OverlapPixel(tuple.getIntegerByField(OVERLAP_PIXEL))
+							.Flag(tuple.getShortByField(FLAG));
 		}
+		Feature feature = (Feature)tuple.getValueByField(FEATURE);
+		if(feature == null && frame.getFlag() == 6){
+//			System.out.println(" - "+frame.getSeqNumber()+" - "+tuple);//--null!!!!!!!
+		}
+//		if(list.size() == 1)
+//			System.out.println(list.size()+" - "+frame.getSeqNumber()+" - "+tuple);//--null!!!!!!!
 //		frame.getFeatures().addAll((List<Feature>)tuple.getValueByField(FEATURES));
+		frame.setFeature(feature);
 		return frame;
 	
 	}
@@ -161,10 +180,13 @@ public class FrameSerializer extends BaseModelSerializer<Frame> implements Seria
 		// TODO Auto-generated method stub
 		Frame frame = (Frame)object;
 		BufferedImage image = frame.getImageBuf();
+		if(frame.getFeature() == null && frame.getFlag() == 6){
+			System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~frame feature is null..."+frame.getSeqNumber());
+		}
 		if(image == null){
-			return new Values(frame.getImageType(), (Object[])null, frame.getTimeStamp(), frame.getBounding());
+			return new Values(frame.getImageType(), (Object[])null, frame.getTimeStamp(), frame.getBounding(), frame.getOverlapPixel() ,frame.getFlag(),frame.getFeature());
 		}else{
-			return new Values(frame.getImageType(), frame.getImageBytes(), frame.getTimeStamp(), frame.getBounding());
+			return new Values(frame.getImageType(), frame.getImageBytes(), frame.getTimeStamp(), frame.getBounding(), frame.getOverlapPixel() , frame.getFlag(),frame.getFeature());
 		}
 	}
 
@@ -177,7 +199,9 @@ public class FrameSerializer extends BaseModelSerializer<Frame> implements Seria
 		fields.add(IMAGE_BYTES);
 		fields.add(TIME_STAMP);
 		fields.add(BOUNDING);
-//		fields.add(FEATURES);
+		fields.add(OVERLAP_PIXEL);
+		fields.add(FLAG);
+		fields.add(FEATURE);
 		return fields;
 	}
 }

@@ -8,7 +8,6 @@ import VideoFeature.model.BaseModel;
 /**
  * 批量输入处理接口，相对于{@link ISingleOperation} ,输入是一系列的帧
  * 
- * @author liangzhaohao
  *
  * @param <Output>
  */

@@ -8,6 +8,7 @@ import com.xuggle.mediatool.ToolFactory;
 import com.xuggle.mediatool.event.IVideoPictureEvent;
 import com.xuggle.xuggler.ICodec;
 import com.xuggle.xuggler.IContainer;
+import com.xuggle.xuggler.IError;
 import com.xuggle.xuggler.IStream;
 import com.xuggle.xuggler.IStreamCoder;
 
@@ -19,9 +20,7 @@ import java.util.Date;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Created by liangzhaohao on 15/3/24.
- */
+
 public class StreamReader extends MediaListenerAdapter implements Runnable {
 
     // frames buffer
@@ -42,18 +41,19 @@ public class StreamReader extends MediaListenerAdapter implements Runnable {
     @Override
     public void onVideoPicture(IVideoPictureEvent event) {
         try {
+        	
             BufferedImage frame = event.getImage();
             Long timestamp = event.getTimeStamp(TimeUnit.MILLISECONDS);
             Frame newFrame = new Frame(steamId, frameSeq, frame, imageType, timestamp,new Rectangle(0, 0, frame.getWidth(), frame.getHeight()));
-            //时间戳转化为Sting或Date  
-            SimpleDateFormat format =  new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");  
-            String d = format.format(timestamp);  
-            Date date=format.parse(d);  
+//            //时间戳转化为Sting或Date  
+//            SimpleDateFormat format =  new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");  
+//            String d = format.format(timestamp);  
+//            Date date=format.parse(d);  
 //            System.out.println("frameSeq : " + frameSeq+",timestamp:"+d);
             frameQueue.put(newFrame);
 
             // Queue is full -> sleep
-            if(frameQueue.size() > 99) {
+            if(frameQueue.size() > 100) {
             	System.out.println(frameQueue.size()+" throttling...");
                 Utils.sleep(frameQueue.size()-30);
             }
@@ -113,10 +113,20 @@ public class StreamReader extends MediaListenerAdapter implements Runnable {
         IMediaReader reader = ToolFactory.makeReader(streamLocation);
         reader.setBufferedImageTypeToGenerate(BufferedImage.TYPE_3BYTE_BGR);
         reader.addListener(this);
-
-        while(null == reader.readPacket() && isRunning ){
+        IError ierror;
+        while(null == (ierror = reader.readPacket()) && isRunning ){
             
         };
+        if(ierror.getType() == IError.Type.ERROR_EOF){//遇到文件末尾
+        	try {
+				Frame endSignal = new Frame(steamId, frameSeq, null, imageType, 0L,new Rectangle(0, 0, 0, 0)).Flag((short) -1);//发送一个特殊帧，表示当前文件读取结束
+				frameQueue.put(endSignal);
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+        }
     }
     public void stop(){
     	isRunning  = false;

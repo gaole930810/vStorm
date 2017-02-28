@@ -1,5 +1,6 @@
 package vStormConfig;
 
+
 import VideoFeature.model.Frame;
 import VideoFeature.model.serializer.FrameSerializer;
 import backtype.storm.Config;
@@ -17,7 +18,6 @@ import backtype.storm.tuple.Tuple;
  * <li>ftp:// - is used to point to a location on a FTP server</li>
  * </ul>
  * 
- * @author liangzhaohao
  *
  */
 public class VStormConfig extends Config{
@@ -48,7 +48,7 @@ public class VStormConfig extends Config{
 	/**
 	 * <b>List<Class) (default = NONE) </b> configuration parameter the available {@link FileConnector} in the topology
 	 */
-	public static final String STORMCV_CONNECTORS = "vstorm.connectors";
+	public static final String STORMCV_CONNECTIONS = "vstorm.connections";
 	
 	/**
 	 * <b>Integer (default = 30)</b> configuration parameter setting the maximum idle time in seconds after which the {@link StreamWriterOperation} will close the file
@@ -60,7 +60,12 @@ public class VStormConfig extends Config{
 	 */
 	public static final String STORMCV_OPENCV_LIB = "vstorm.opencv.lib";
 	
+	public static final String FTP_USERNAME= "stormcv.ftp.username";
 	
+	/**
+	 * Configuration key used to set the FTP password in {@link StormCVConfig}
+	 */
+	public static final String FTP_PASSWORD = "stormcv.ftp.password";
 	/**
 	 * Creates a specific Configuration for StormCV.
 	 * <ul>

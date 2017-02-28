@@ -7,11 +7,10 @@ import VideoFeature.model.serializer.BaseModelSerializer;
 import backtype.storm.tuple.Tuple;
 
 /**
- * Created by liangzhaohao on 15/4/20.
- *
- * steamId info for frame
- * seqNumber info for frame may be the frame number
- * 
+ * 基本模型，所有其他Model类的基类
+ * <li>streamId 流Id</li>
+ * <li>seqNumber 帧序号</li>
+ * <li>tuple </li>
  */
 public abstract class BaseModel implements Comparable<BaseModel> {
 

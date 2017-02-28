@@ -24,7 +24,6 @@ import backtype.storm.task.TopologyContext;
 /**
  * 计算一个帧 {@link Frame} 的颜色直方图特征 {@link Feature} 
  * 
- * @author liangzhaohao
  */
 
 public class ColorHistogramOp extends OpenCVOp<Feature> implements ISingleOperation<Feature>{
@@ -101,7 +100,7 @@ public class ColorHistogramOp extends OpenCVOp<Feature> implements ISingleOperat
 				
 		// add features to result
 		if ( hist_descriptors.size() > 0 )
-			result.add( new Feature( input.getStreamId(), input.getSeqNumber(), name, 0, hist_descriptors, null ) );
+			result.add( new Feature( input.getStreamId(), input.getSeqNumber(), name, 0, hist_descriptors, null /*,sf.getBounding()*/) );
 		
 		return result;
 	}

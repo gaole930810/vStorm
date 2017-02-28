@@ -4,12 +4,19 @@ package VideoFeature.model;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 
 import VideoFeature.utils.ImageUtils;
 import backtype.storm.tuple.Tuple;
 
 /**
- * Created by liangzhaohao on 15/3/24.
+ * 帧模型，存储帧的实际数据，flag指定该帧是否为关键帧
+ * flag = 0 普通帧,
+ * flag = 1 关键帧,
+ * flag = 2 取得关键帧的边界帧,
+ * flag = 3 boundary边界帧,
  *
  */
 public class Frame extends BaseModel{
@@ -23,7 +30,24 @@ public class Frame extends BaseModel{
     private byte[] imageBytes;
     private BufferedImage imageBuf;
     private Rectangle bounding;
+    private int overlapPixel = 0;//如帧是部分数据块，指明重叠区域大小
+    private short flag = 0; //是否为关键帧，是否为取得关键帧的边界
 
+	private Feature feature ;// 特征列表,一个帧可以有多种特征
+    
+    
+	public Frame(String streamId, long seqNumber, BufferedImage imageBuf, String imageType, long timeStamp, Rectangle bounding, Feature feature) throws IOException {
+		this(streamId, seqNumber, imageBuf,  imageType,timeStamp, bounding);
+		/*if(features != null)*/
+		this.feature = feature;
+	}
+	
+	public Frame(String streamId, long seqNumber, String imageType, byte[] imageBytes, long timeStamp, Rectangle bounding, Feature feature) {
+		this(streamId, seqNumber, imageType, imageBytes, timeStamp, bounding);
+		/*if(features != null)*/ 
+		this.feature = feature;
+	}
+	
     public Frame(String steamId, long seqNumber, BufferedImage imageBuf, String imageType, long timeStamp,Rectangle bounding) throws IOException {
         super(steamId, seqNumber);
         this.imageType = imageType;
@@ -116,6 +140,37 @@ public class Frame extends BaseModel{
 
 	public void setTimeStamp(long timeStamp) {
 		this.timeStamp = timeStamp;
+	}
+	
+	public int getOverlapPixel() {
+		return overlapPixel;
+	}
+
+	public Frame OverlapPixel(int overlapPixel) {
+		this.overlapPixel = overlapPixel;
+		return this;
+	}
+
+	public Feature getFeature() {
+		return feature;
+	}
+	public void setFeature(Feature feature) {
+		this.feature = feature;
+	}
+	
+    public short getFlag() {
+		return flag;
+	}
+    /*
+	 * flag = 0 普通帧,
+	 * flag = 1 关键帧,
+	 * flag = 2 取得关键帧的边界帧,
+	 * flag = 3 boundary边界帧,
+	 * flag = -1 or 4 流结束,
+	 */
+	public Frame Flag(short flag) {
+		this.flag = flag;
+		return this;
 	}
 	
 	public String toString(){

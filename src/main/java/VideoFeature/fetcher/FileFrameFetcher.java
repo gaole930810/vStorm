@@ -14,14 +14,11 @@ import VideoFeature.model.serializer.FrameSerializer;
 import VideoFeature.utils.StreamReader;
 import backtype.storm.task.TopologyContext;
 
-/**
- * Created by liangzhaohao on 15/3/24.
- */
 public class FileFrameFetcher implements IFetcher<BaseModel>{
 
 	private static final long serialVersionUID = 1L;
 	private Logger logger = LoggerFactory.getLogger(FileFrameFetcher.class);
-    private final static int MAX_SIZE = 100;
+    private final static int MAX_SIZE = 200;
     private StreamReader reader ;
     private String location; //单个流
 	private int frameSkip = 1;//跳帧

@@ -11,7 +11,6 @@ import backtype.storm.task.TopologyContext;
 /**
  * 所有帧处理组件的操作接口
  * 
- * @author liangzhaohao on 15/4/15.
  */
 public interface IOperation <Output extends BaseModel> extends Serializable{
 

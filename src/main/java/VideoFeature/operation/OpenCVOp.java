@@ -12,7 +12,6 @@ import backtype.storm.task.TopologyContext;
 /**
  * 涉及调用opencv方法的Operation抽象类，通过libName加载opencv动态链接库。所有调用opencv的操作都需继承它。
  * 
- * @author liangzhaohao
  *
  */
 public abstract class OpenCVOp<Output extends BaseModel> implements IOperation<Output>{
@@ -20,7 +19,11 @@ public abstract class OpenCVOp<Output extends BaseModel> implements IOperation<O
 	private static final long serialVersionUID = -7758652109335765844L;
 
 	private String libName;
+	private long startTime;
 	
+	public long getProcessTime(){
+		return System.currentTimeMillis() - startTime;
+	}
 	protected String getLibName(){
 		return this.libName;
 	}
@@ -29,6 +32,7 @@ public abstract class OpenCVOp<Output extends BaseModel> implements IOperation<O
 	public void prepare(Map stormConf, TopologyContext context) throws Exception{
 		loadOpenCV(stormConf);
 		this.prepareOpenCVOp(stormConf, context);
+	
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -36,6 +40,7 @@ public abstract class OpenCVOp<Output extends BaseModel> implements IOperation<O
 		this.libName = (String)stormConf.get(VStormConfig.STORMCV_OPENCV_LIB);
 		if(libName == null) NativeUtils.load();
 		else NativeUtils.load(libName);
+		startTime=System.currentTimeMillis();
 	}
 	
 	@SuppressWarnings("rawtypes")

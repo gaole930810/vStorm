@@ -17,7 +17,6 @@ import backtype.storm.tuple.Values;
 
 /**
  * 从流中读取帧数据
- * @author liangzhaohao on 15/3/12.
  */
 public class VideoStreamSpout implements IRichSpout{
 
@@ -92,15 +91,19 @@ public class VideoStreamSpout implements IRichSpout{
 //        }
         //Frame frameData = fetcher.fetchData();
         
-		if(frameData != null) try {
-			Values values = fetcher.getSerializer().toTuple(frameData);
-			String id = frameData.getStreamId()+"_"+frameData.getSeqNumber();
-//			if(faultTolerant && tupleCache != null) tupleCache.put(id, values);
-			collector.emit(values, id);
-		} catch (IOException e) {
-			logger.warn("Unable to fetch next frame from queue due to: "+e.getMessage());
-		}
-		
+		if(frameData != null){
+			try {
+//				System.out.println("fetch frame :"+frameData.getSeqNumber());
+				Values values = fetcher.getSerializer().toTuple(frameData);
+				String id = frameData.getStreamId()+"_"+frameData.getSeqNumber();
+	//			if(faultTolerant && tupleCache != null) tupleCache.put(id, values);
+				collector.emit(values, id);
+			}catch (IOException e) {
+				logger.warn("Unable to fetch next frame from queue due to: "+e.getMessage());
+			}
+		}else {
+//			System.out.println("catch the end");
+		} 
 //        Values values = new Values(frameData);
 //        collector.emit(values);
 //        if(null != frameData || null != frameData2) {

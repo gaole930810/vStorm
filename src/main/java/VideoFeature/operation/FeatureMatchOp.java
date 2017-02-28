@@ -12,33 +12,41 @@ import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FeatureDetector;
 import org.opencv.highgui.Highgui;
+import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Logger;
+
+//import ch.qos.logback.classic.Logger;
 
 import VideoFeature.model.BaseModel;
 import VideoFeature.model.Descriptor;
 import VideoFeature.model.Feature;
+import VideoFeature.model.Frame;
 import VideoFeature.model.serializer.BaseModelSerializer;
 import VideoFeature.model.serializer.FeatureSerializer;
+import VideoFeature.model.serializer.FrameSerializer;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.Utils;
-
+import VideoFeature.operation.*;
 
 /**
  * 特征匹配接口，输入为单帧特征 ，继承{@link ISingleOperation}
  * @param name 
  * @param imageUrl 带匹配的图片url 
  * 
- * @author liangzhaohao
  */
 
 public class FeatureMatchOp extends OpenCVOp<BaseModel>  implements ISingleOperation<BaseModel>{
 	
 	private static final long serialVersionUID = -5543735411296339252L;
+	private Logger logger = (Logger) LoggerFactory.getLogger(getClass());
 	private String name;
 	private String imageUrl;
 	private int detectorType;
 	private int descriptorType;
 	private Mat trainDescriptors;	//待匹配图像的SIFT描述符
 	private int matchCounter = 0;
+	private boolean outputFrame = false;
 	@SuppressWarnings("rawtypes")
 	private BaseModelSerializer serializer = new FeatureSerializer();
 	
@@ -53,10 +61,31 @@ public class FeatureMatchOp extends OpenCVOp<BaseModel>  implements ISingleOpera
 		this.imageUrl = imageUrl;
 		return this;
 	}
+	
+	public FeatureMatchOp outputFrame(boolean outputFrame){
+		this.outputFrame = outputFrame;
+		return this;
+	}
 	@Override
 	public List<BaseModel> execute(BaseModel input) throws Exception 
 	{
-		Feature feature = (Feature)input;
+		Feature feature = null;
+		if(input instanceof Frame){
+
+			Frame f = (Frame)input;
+//			for(Feature ft : f.getFeatures()){
+//				feature = ft;
+//			}
+			feature = f.getFeature();
+		}else if(input instanceof Feature){
+			feature = (Feature)input;
+		}
+		if(feature == null){
+			logger.warn("Can not got feature from "+input.getClass().getName()+" number:"+((Frame)input).getSeqNumber()+
+					((Frame)input).getFlag()+" so input is dropped.");
+			return null;
+		}
+		List<BaseModel> result = new ArrayList<BaseModel>();
 		System.out.println("SIFT matching"+"_"+feature.getSeqNumber());
 //		System.out.println("train image mat:"+trainDescriptors.rows()+"x"+trainDescriptors.cols()+"type-"+trainDescriptors.type());
 		
@@ -77,26 +106,32 @@ public class FeatureMatchOp extends OpenCVOp<BaseModel>  implements ISingleOpera
 	    Double max_dist = 0.0;
 	    Double min_dist = 100.0;
 
-	    for (int i = 0; i < matchesList.size(); i++)
-	    {
+	    for (int i = 0; i < matchesList.size(); i++){
 	        Double dist = (double) matchesList.get(i).distance;
 
-	        if (dist < min_dist && dist != 0)
-	        {
+	        if (dist < min_dist && dist != 0){
 	            min_dist = dist;
 	        }
 
-	        if (dist > max_dist)
-	        {
+	        if (dist > max_dist){
 	            max_dist = dist;
 	        }
 
 	    }
 	    System.out.println("min_distL:"+min_dist+",max_dist:"+max_dist);
-	    if(min_dist > 50 )
-	    {
+	    /*
+	     * 发送帧到下游
+	     * 
+	     */
+	    if(outputFrame && input instanceof Frame){
+        	result.add((Frame)input);
+        }else{
+        	result.add(feature);
+        }
+	    
+	    if(min_dist > 50 ){
 	        System.out.println("No match found");
-	        return null;
+	        return result;
 	    }
 
 	    double threshold = 3 * min_dist;
@@ -125,15 +160,18 @@ public class FeatureMatchOp extends OpenCVOp<BaseModel>  implements ISingleOpera
 	    }
 	    matchesFiltered.fromList(bestMatches);
 	    System.out.println("matchesFiltered.size() : " + matchesFiltered.size());
+        
+	    
 	    if(matchesFiltered.rows() >= 1)
 	    {
 	        ++matchCounter;
+
 	        System.out.println("match found,total match frame:"+matchCounter);
-	        return null;
+	        return result;
 	    }
 	    else
 	    {
-	        return null;
+	        return result;
 	    }
 	}
 
@@ -161,13 +199,13 @@ public class FeatureMatchOp extends OpenCVOp<BaseModel>  implements ISingleOpera
 	@Override
 	public BaseModelSerializer<BaseModel> getSerializer() 
 	{
+		if(outputFrame) this.serializer = new FrameSerializer();
 		return this.serializer;
 	}
 	
 	
 
 	public void getTrainImageDescriptor(){
-		// TODO Auto-generated method stub
 		//先计算待匹配图像的SIFT特征描述符
 		Mat trainImage = Highgui.imread(imageUrl);
 		FeatureDetector siftDetector = FeatureDetector.create(detectorType);
